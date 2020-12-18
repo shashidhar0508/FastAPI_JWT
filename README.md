@@ -10,4 +10,4 @@ pip3 install -r requirements.txt
 uvicorn main:app --reload
 ```
 - From POSTMAN send the Token by selecting 'Bearer Token' in 'Authorization' and add the token in token field.
-- As we used middleware in our project for every method we the middleware will be executed first.
+- As we used middleware in our project for every method the middleware will be executed first.
