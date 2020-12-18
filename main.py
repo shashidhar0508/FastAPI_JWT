@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Security
+from fastapi import FastAPI, Security, Request
 from fastapi.security import OAuth2PasswordBearer
 from pydantic import BaseModel
 import datetime
@@ -12,35 +12,50 @@ class User(BaseModel):
     password: str
 
 
-JWT_SECRET_KEY = 'shashi'
-JWT_ALGORITHM = 'HS256'
+JWT_SECRET_KEY = 'EvO>|3_LND_SeC123t'
+JWT_ALGORITHM = 'HS512'
 
 token_check = OAuth2PasswordBearer(tokenUrl="/")
 
 
-def token_validation(func):
-    def validation_process(token):
-        print("token in validation process : ", token)
+@app.middleware("http")
+async def add_process_time_header(request: Request, call_next):
+    token1 = request.headers['authorization']
+    token2 = token1.replace("Bearer ", "")
+    validation_process(token2)
+    response = await call_next(request)
+    return response
+
+
+def validation_process(token):
+    if token != '' and token is not None:
         try:
-            user_details = jwt.decode(token, JWT_SECRET_KEY, JWT_ALGORITHM)
-            print("user details : ", user_details)
-            if user_details.user_id == 'shashi' and user_details.password == 'shashi123':
+            jwt_options = {
+                'verify_signature': False,
+                'verify_exp': True,
+                'verify_nbf': False,
+                'verify_iat': True,
+                'verify_aud': False
+            }
+            user_details = jwt.decode(token.encode(), JWT_SECRET_KEY.encode(), algorithms=['HS512'], options=jwt_options)
+            print("user_details : ",user_details)
+            if user_details['sub'] == 'shashi123':
                 return {"message": "valid user"}
             else:
                 return {"message": "Invalid user"}
-        except Exception:
+        except (jwt.DecodeError, jwt.ExpiredSignatureError) as msg:
             return {"message": "Token is invalid or Timeout"}
-
-    return validation_process
+    else:
+        return {"message": "Token required"}
 
 
 @app.get("/protected_method")
-@token_validation
 def protected_method(token: str = Security(token_check)):
     """
             Valid token users can access this function,
             Used decorator to check if token is valid or not
     """
+    print("protected_method")
     return {"message": "Valid users can only access this function"}
 
 
@@ -64,30 +79,3 @@ def login(user: User):
         return {"token": token}
     except Exception:
         return {"message": "Error in creating Token"}
-
-# @app.get("/check")
-# def user_ops(token: str = Security(token_check)):
-#     print("Input token : ", token)
-#     user_names = user_encode.decode_token(token)
-#     print("user name after decode : ", user_names)
-#     print("type of user_names : ", type(user_names))
-#     name = user_names["name"]
-#     print("name after decode : ", name)
-#     if name == 'shashi':
-#         return {"status": "success"}
-#     else:
-#         return {"Token Error": "Incorrect user name"}
-
-
-# @app.get("/login/{username}/{password}")
-# def login(username: str, password: str, token: str = Security(token_check)):
-#     username = user_encode.decode_token(token)
-#     print("user name after decode : ", username)
-#     try:
-#         if username == 'shashi' and password == 'shashi123':
-#             times = datetime.datetime.utcnow() + datetime.timedelta(minutes=1)
-#             payload = {"user_id": username, "exp": times}
-#             token = jwt.encode(payload, JWT_SECRET_KEY, JWT_ALGORITHM)
-#             return {"token": token}
-#     except ValueError:
-#         return {"info": "wrong credentials"}
