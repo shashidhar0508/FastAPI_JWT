@@ -1,4 +1,6 @@
-from fastapi import FastAPI, Security, Request
+from base64 import b64decode
+
+from fastapi import FastAPI, Security, Request, Header
 from fastapi.security import OAuth2PasswordBearer
 from pydantic import BaseModel
 import datetime
@@ -19,9 +21,10 @@ token_check = OAuth2PasswordBearer(tokenUrl="/")
 
 
 @app.middleware("http")
-async def add_process_time_header(request: Request, call_next):
+async def add_process_time_header(request: Request, call_next, user_agent: str = Header('Authorization')):
     token1 = request.headers['authorization']
     token2 = token1.replace("Bearer ", "")
+    print("token2 :",token2)
     validation_process(token2)
     response = await call_next(request)
     return response
@@ -29,6 +32,7 @@ async def add_process_time_header(request: Request, call_next):
 
 def validation_process(token):
     if token != '' and token is not None:
+        print("token sd:", token)
         try:
             jwt_options = {
                 'verify_signature': False,
@@ -37,13 +41,16 @@ def validation_process(token):
                 'verify_iat': True,
                 'verify_aud': False
             }
-            user_details = jwt.decode(token.encode(), JWT_SECRET_KEY.encode(), algorithms=['HS512'], options=jwt_options)
-            print("user_details : ",user_details)
-            if user_details['sub'] == 'shashi123':
-                return {"message": "valid user"}
-            else:
-                return {"message": "Invalid user"}
+            user_details = jwt.decode(token.encode(), JWT_SECRET_KEY.encode(), algorithms=['HS512'],
+                                      options=jwt_options)
+            print(user_details)
+            # return user_details
+            # if user_details['sub'] == 'shashi123' and user_details['roleId'] == '9d9b4a1f-1711-4dac-ba7f-ced9aa9cd6e9':
+            #     return {"message": "valid user"}
+            # else:
+            #     return {"message": "Invalid user"}
         except (jwt.DecodeError, jwt.ExpiredSignatureError) as msg:
+            print(msg)
             return {"message": "Token is invalid or Timeout"}
     else:
         return {"message": "Token required"}
